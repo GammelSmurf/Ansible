@@ -1,0 +1,40 @@
+---
+- name: show facts 
+  hosts: routers
+  gather_facts: false
+  ignore_errors: true
+  tasks:
+   - name: add new user
+     routeros_command:
+       commands: /user add name=ans_user group=full password=123
+
+   - name: configure NTP client
+     routeros_command:
+       commands: /system ntp client set enabled=yes server-dns-names=ntp2.stratum1.ru
+
+   - name: configure OSPF
+     routeros_command:
+       commands: /routing ospf instance add name=ansible_ospf router-id={{ router_id }}
+
+   # SAVE CONFIG INFO TO FILES
+
+   - name: get info about device
+     routeros_facts:
+       gather_subset: all
+     register: config_info
+
+   - name: copy device config
+     copy:
+       content: "{{config_info}}"
+       dest: facts/device/{{config_device_filename}}.json
+
+   - name: get info about OSPF
+     routeros_facts:
+       gather_subset:
+         - routing
+     register: ospf_info
+
+   - name: Copy ospf
+     copy:
+       content: "{{ospf_info['ansible_facts']['ansible_net_ospf_instance']}}"
+       dest: facts/ospf/{{ config_ospf_filename }}.json
